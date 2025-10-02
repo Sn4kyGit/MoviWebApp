@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+  <a href="{{ url_for('index') }}">&larr; zurück</a>
+  <h1>{{ user.name }} – Favoriten</h1>
+
+  <form action="{{ url_for('add_favorite', user_id=user.id) }}" method="post" style="margin-bottom:1rem">
+    <input type="text" name="title" placeholder="Filmtitel (OMDb)" required>
+    <button type="submit">Hinzufügen</button>
+  </form>
+
+  <ul class="movie-list">
+    {% for m in movies %}
+      <li class="movie-item">
+        {% if m.poster_url %}
+          <img src="{{ m.poster_url }}" alt="{{ m.name }}" class="poster">
+        {% endif %}
+        <div>
+          <strong>{{ m.name }}</strong> {% if m.year %}({{ m.year }}){% endif %}<br>
+          Regie: {{ m.director or "–" }}<br>
+
+          <form action="{{ url_for('update_movie', movie_id=m.id) }}" method="post" class="inline-form">
+            <input type="text"   name="name"       value="{{ m.name or '' }}" placeholder="Title">
+            <input type="text"   name="director"   value="{{ m.director or '' }}" placeholder="Director">
+            <input type="number" name="year"       value="{{ m.year or '' }}" placeholder="Year" min="1888" max="2100">
+            <input type="url"    name="poster_url" value="{{ m.poster_url or '' }}" placeholder="Poster URL">
+            <button type="submit">Update</button>
+          </form>
+
+          <form action="{{ url_for('remove_favorite', user_id=user.id, movie_id=m.id) }}" method="post" class="inline-form">
+            <button type="submit">Löschen</button>
+          </form>
+        </div>
+      </li>
+    {% else %}
+      <li>Keine Filme in den Favoriten.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
