@@ -1,64 +1,71 @@
-# models.py
-from datetime import datetime
+"""SQLAlchemy models for MoviWeb."""
+
+from __future__ import annotations
+
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 
 db = SQLAlchemy()
 
-# Association-Tabelle: User <-> Favorite Movies (Many-to-Many)
-user_favorites = db.Table(
-    "user_favorites",
-    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
-    db.Column("movie_id", db.Integer, db.ForeignKey("movies.id"), primary_key=True),
-    db.Column("created_at", db.DateTime, nullable=False, default=datetime.utcnow),
-)
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = "users"
 
-    id   = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), unique=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
 
-    favorites = db.relationship(
-        "Movie",
-        secondary=user_favorites,
-        back_populates="fans",
-        lazy="dynamic",
-    )
+    movies = db.relationship("Movie", backref="user", cascade="all, delete-orphan")
 
-    def __repr__(self):
-        return f"<User {self.id}:{self.name}>"
+    def get_id(self) -> str:  # Flask-Login expects str
+        return str(self.id)
 
-    def to_dict(self) -> dict:
-        return {"id": self.id, "name": self.name}
 
 class Movie(db.Model):
     __tablename__ = "movies"
 
-    id         = db.Column(db.Integer, primary_key=True)
-    name       = db.Column(db.String(255), nullable=False, index=True)
-    director   = db.Column(db.String(255))
-    year       = db.Column(db.Integer)
-    poster_url = db.Column(db.String(1024))
+    id = db.Column(db.Integer, primary_key=True)
 
-    fans = db.relationship(
-        "User",
-        secondary=user_favorites,
-        back_populates="favorites",
-        lazy="dynamic",
-    )
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
 
-    __table_args__ = (
-        db.UniqueConstraint("name", "year", name="uq_movie_name_year"),
-    )
+    # Core
+    name = db.Column(db.String(200), nullable=False)  # OMDb: Title
+    year = db.Column(db.Integer)                      # Year
+    director = db.Column(db.String(200))              # Director
+    poster_url = db.Column(db.String(500))            # Poster
 
-    def __repr__(self):
-        return f"<Movie {self.id}:{self.name} ({self.year})>"
+    # OMDb extras (String/Short text – N/A tolerant)
+    plot = db.Column(db.Text)                         # Plot
+    writer = db.Column(db.String(400))                # Writer
+    actors = db.Column(db.String(400))                # Actors
+    genre = db.Column(db.String(200))                 # Genre
+    runtime = db.Column(db.String(50))                # Runtime (e.g. "127 min")
+    released = db.Column(db.String(50))               # Released (e.g. "11 Jun 1993")
+    rated = db.Column(db.String(20))                  # Rated (e.g. "PG-13")
+    language = db.Column(db.String(200))              # Language
+    country = db.Column(db.String(200))               # Country
+    awards = db.Column(db.String(300))                # Awards
+    imdb_rating = db.Column(db.String(10))            # imdbRating as string to keep "N/A"
+    imdb_id = db.Column(db.String(20))                # imdbID (for precise refresh)
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "name": self.name,
-            "director": self.director,
             "year": self.year,
+            "director": self.director,
             "poster_url": self.poster_url,
+            "plot": self.plot,
+            "writer": self.writer,
+            "actors": self.actors,
+            "genre": self.genre,
+            "runtime": self.runtime,
+            "released": self.released,
+            "rated": self.rated,
+            "language": self.language,
+            "country": self.country,
+            "awards": self.awards,
+            "imdb_rating": self.imdb_rating,
+            "imdb_id": self.imdb_id,
         }

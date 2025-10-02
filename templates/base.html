@@ -4,20 +4,51 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>MoviWeb</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <!-- Cache-Busting -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v=12) }}">
 </head>
-<body>
+
+{# --- Body-Class vorbereiten, außerhalb des Tags --- #}
+{% set body_classes = 'bg' %}
+{% if current_user.is_authenticated %}
+  {% set body_classes = body_classes ~ ' bg--flat' %}
+{% endif %}
+
+<body class="{{ body_classes }}">
+  <!-- Header -->
+  <header class="site-header">
+    <div class="brand" aria-label="Brand">
+      <div class="brand-mark" aria-hidden="true">VE</div>
+      <div class="brand-name">MoviWeb</div>
+    </div>
+
+    {% if current_user.is_authenticated %}
+      <nav class="top-actions" aria-label="Benutzerbereich">
+        <div class="user-chip" role="group">
+          <div class="chip-avatar" aria-hidden="true">👤</div>
+          <div class="chip-name">{{ current_user.name }}</div>
+          <a class="chip-btn" href="{{ url_for('logout') }}" title="Logout">Logout</a>
+        </div>
+      </nav>
+    {% endif %}
+  </header>
+
+  <!-- Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="flash-container">
+      <div class="flash-stack" role="status" aria-live="polite">
         {% for cat, msg in messages %}
           <div class="flash flash-{{ cat }}">{{ msg }}</div>
         {% endfor %}
       </div>
     {% endif %}
   {% endwith %}
-  <main class="container">
+
+  <!-- Content -->
+  <main class="page" id="main">
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="site-footer">© Vǫluspá Echoes • Demo App</footer>
 </body>
 </html>

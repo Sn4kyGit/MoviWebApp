@@ -1,41 +1,101 @@
 {% extends "base.html" %}
 {% block content %}
-  <p><a href="{{ url_for('home') }}">&larr; zurück</a></p>
-  <h1>{{ user.name }} – Favorite Movies</h1>
+  <section class="center-wrap left">
+    <h1 class="page-title-left">Meine Favoriten</h1>
 
-  <!-- Film hinzufügen -->
-  <form action="{{ url_for('add_user_movie', user_id=user.id) }}" method="post" style="margin-bottom:1rem">
-    <input type="text" name="title" placeholder="Filmtitel (OMDb oder frei)" required>
-    <button type="submit">Hinzufügen</button>
-  </form>
+    <!-- Hinzufügen -->
+    <form action="{{ url_for('my_movies_add') }}" method="post" class="input-group" aria-label="Film hinzufügen">
+      <input class="input input-lg" type="text" name="title" placeholder="Filmtitel (OMDb oder frei)" required>
+      <button class="btn btn-primary btn-lg" type="submit">Hinzufügen</button>
+    </form>
 
-  <ul class="movie-list">
-    {% for m in movies %}
-      <li class="movie-item">
-        {% if m.poster_url %}
-          <img src="{{ m.poster_url }}" alt="{{ m.name }}" class="poster">
-        {% endif %}
-        <div>
-          <strong>{{ m.name }}</strong> {% if m.year %}({{ m.year }}){% endif %}<br>
-          Regie: {{ m.director or "–" }}<br>
+    <ul class="movie-list">
+      {% for m in movies %}
+        <li class="movie-item detail-layout">
+          {% if m.poster_url %}
+            <img src="{{ m.poster_url }}" alt="Poster von {{ m.name }}" class="poster-lg">
+          {% else %}
+            <div class="poster-lg poster-placeholder" aria-hidden="true">🎬</div>
+          {% endif %}
 
-          <!-- Update (ohne OMDb, rein lokal) -->
-          <form action="{{ url_for('update_user_movie', user_id=user.id, movie_id=m.id) }}" method="post" class="inline-form">
-            <input type="text"   name="name"       value="{{ m.name or '' }}" placeholder="Title">
-            <input type="text"   name="director"   value="{{ m.director or '' }}" placeholder="Director">
-            <input type="number" name="year"       value="{{ m.year or '' }}" placeholder="Year" min="1888" max="2100">
-            <input type="url"    name="poster_url" value="{{ m.poster_url or '' }}" placeholder="Poster URL">
-            <button type="submit">Update</button>
-          </form>
+          <div class="movie-details">
+            <div class="mv-headline">
+              <strong class="mv-title">{{ m.name }}</strong>
+              {% if m.year %}<span class="movie-year">({{ m.year }})</span>{% endif %}
+            </div>
 
-          <!-- Delete aus Favoriten -->
-          <form action="{{ url_for('delete_user_movie', user_id=user.id, movie_id=m.id) }}" method="post" class="inline-form">
-            <button type="submit">Löschen</button>
-          </form>
-        </div>
-      </li>
-    {% else %}
-      <li>Keine Filme in den Favoriten.</li>
-    {% endfor %}
-  </ul>
+            {% if m.plot %}
+              <p class="mv-plot">{{ m.plot }}</p>
+            {% endif %}
+
+            <div class="mv-row"><span class="mv-label">Regie</span><span class="mv-value">{{ m.director or "–" }}</span></div>
+            {% if m.writer %}<div class="mv-row"><span class="mv-label">Drehbuch</span><span class="mv-value">{{ m.writer }}</span></div>{% endif %}
+            {% if m.actors %}<div class="mv-row"><span class="mv-label">Hauptbesetzung</span><span class="mv-value">{{ m.actors }}</span></div>{% endif %}
+            {% if m.genre %}<div class="mv-row"><span class="mv-label">Genre</span><span class="mv-value">{{ m.genre }}</span></div>{% endif %}
+            {% if m.runtime %}<div class="mv-row"><span class="mv-label">Laufzeit</span><span class="mv-value">{{ m.runtime }}</span></div>{% endif %}
+            {% if m.released %}<div class="mv-row"><span class="mv-label">Veröffentlicht</span><span class="mv-value">{{ m.released }}</span></div>{% endif %}
+            {% if m.rated %}<div class="mv-row"><span class="mv-label">FSK/Rating</span><span class="mv-value">{{ m.rated }}</span></div>{% endif %}
+            {% if m.language %}<div class="mv-row"><span class="mv-label">Sprache</span><span class="mv-value">{{ m.language }}</span></div>{% endif %}
+            {% if m.country %}<div class="mv-row"><span class="mv-label">Land</span><span class="mv-value">{{ m.country }}</span></div>{% endif %}
+            {% if m.awards %}<div class="mv-row"><span class="mv-label">Auszeichnungen</span><span class="mv-value">{{ m.awards }}</span></div>{% endif %}
+            {% if m.imdb_rating %}<div class="mv-row"><span class="mv-label">IMDb</span><span class="mv-value">{{ m.imdb_rating }}/10</span></div>{% endif %}
+
+            <div class="mv-row mv-actions">
+              <button class="btn btn-ghost" type="button" data-edit-toggle="#edit-{{ m.id }}">Update</button>
+
+              <!-- geändert: wie "Update" (nicht mehr weiß) -->
+              <form class="inline" action="{{ url_for('my_movies_refresh', movie_id=m.id) }}" method="post">
+                <button class="btn btn-ghost" type="submit" title="Metadaten via OMDb aktualisieren">Metadaten aktualisieren</button>
+              </form>
+
+              <form class="inline" action="{{ url_for('my_movies_delete', movie_id=m.id) }}" method="post" onsubmit="return confirm('Willst du diesen Film wirklich löschen?');">
+                <button class="btn btn-danger" type="submit">Löschen</button>
+              </form>
+            </div>
+
+            <div id="edit-{{ m.id }}" class="edit-panel" hidden>
+              <form action="{{ url_for('my_movies_update', movie_id=m.id) }}" method="post" class="edit-form" aria-label="Film bearbeiten: {{ m.name }}">
+                <input class="input" type="text"   name="name"       value="{{ m.name or '' }}" placeholder="Title">
+                <input class="input" type="text"   name="director"   value="{{ m.director or '' }}" placeholder="Director">
+                <input class="input" type="number" name="year"       value="{{ m.year or '' }}"   placeholder="Year" min="1888" max="2100">
+                <input class="input" type="url"    name="poster_url" value="{{ m.poster_url or '' }}" placeholder="Poster URL">
+                <textarea class="input" name="plot" rows="3" placeholder="Plot">{{ m.plot or '' }}</textarea>
+                <input class="input" type="text" name="writer"   value="{{ m.writer or '' }}"   placeholder="Writer">
+                <input class="input" type="text" name="actors"   value="{{ m.actors or '' }}"   placeholder="Actors">
+                <input class="input" type="text" name="genre"    value="{{ m.genre or '' }}"    placeholder="Genre">
+                <input class="input" type="text" name="runtime"  value="{{ m.runtime or '' }}"  placeholder="Runtime">
+                <input class="input" type="text" name="released" value="{{ m.released or '' }}" placeholder="Released">
+                <input class="input" type="text" name="rated"    value="{{ m.rated or '' }}"    placeholder="Rated">
+                <input class="input" type="text" name="language" value="{{ m.language or '' }}" placeholder="Language">
+                <input class="input" type="text" name="country"  value="{{ m.country or '' }}"  placeholder="Country">
+                <input class="input" type="text" name="awards"   value="{{ m.awards or '' }}"   placeholder="Awards">
+                <input class="input" type="text" name="imdb_rating" value="{{ m.imdb_rating or '' }}" placeholder="IMDb Rating">
+
+                <div class="edit-actions">
+                  <button class="btn btn-primary" type="submit">Speichern</button>
+                  <button class="btn btn-ghost" type="button" data-edit-toggle="#edit-{{ m.id }}">Abbrechen</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </li>
+      {% else %}
+        <li>Keine Filme in den Favoriten.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <script>
+    "use strict";
+    document.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-edit-toggle]");
+      if (!btn) return;
+      const sel = btn.getAttribute("data-edit-toggle");
+      const panel = document.querySelector(sel);
+      if (!panel) return;
+      const hidden = panel.hasAttribute("hidden");
+      if (hidden) { panel.removeAttribute("hidden"); requestAnimationFrame(()=>panel.classList.add("open")); }
+      else { panel.classList.remove("open"); panel.addEventListener("transitionend", function h(){ panel.setAttribute("hidden",""); panel.removeEventListener("transitionend", h); }, {once:true}); }
+    });
+  </script>
 {% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="center-wrap left landing">
+    <h1 class="page-title-left">Willkommen bei MoviWeb</h1>
+    <p class="subtitle">Log dich ein oder erstelle in Sekunden einen Account.</p>
+
+    <div class="grid-2">
+      <!-- Login -->
+      <div class="card">
+        <h2 class="card-title">Login</h2>
+        <form action="{{ url_for('login') }}" method="post" class="form" autocomplete="on">
+          <label class="label" for="login-username">Username</label>
+          <input id="login-username" class="input" type="text" name="username" placeholder="Dein Nutzername" required>
+
+          <label class="label" for="login-password">Passwort</label>
+          <input id="login-password" class="input" type="password" name="password" placeholder="••••" required>
+
+          <button class="btn btn-primary" type="submit">Einloggen</button>
+        </form>
+      </div>
+
+      <!-- Register -->
+      <div class="card">
+        <h2 class="card-title">Registrieren</h2>
+        <form action="{{ url_for('register') }}" method="post" class="form" autocomplete="off">
+          <label class="label" for="reg-username">Username</label>
+          <input id="reg-username" class="input" type="text" name="username" placeholder="Wunschname" required>
+
+          <label class="label" for="reg-password">Passwort</label>
+          <input id="reg-password" class="input" type="password" name="password" placeholder="z. B. 1234 (Test)" required>
+
+          <button class="btn btn-accent" type="submit">Account erstellen</button>
+        </form>
+      </div>
+    </div>
+  </section>
+{% endblock %}
