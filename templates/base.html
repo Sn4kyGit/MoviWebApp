@@ -4,11 +4,15 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>MoviWeb</title>
-  <!-- Cache-Busting -->
+
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+
+  <!-- Cache-Busting für CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v=12) }}">
 </head>
 
-{# --- Body-Class vorbereiten, außerhalb des Tags --- #}
+{# --- Body-Class vorbereiten, außerhalb des Body-Tags --- #}
 {% set body_classes = 'bg' %}
 {% if current_user.is_authenticated %}
   {% set body_classes = body_classes ~ ' bg--flat' %}

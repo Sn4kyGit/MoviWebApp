@@ -5,17 +5,29 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from flask import Flask, abort, flash, redirect, render_template, request, url_for, jsonify
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+    jsonify,
+    send_from_directory,
+)
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, NotFound
 
 from models import db, User
 from data_manager import DataManager, AppError, AuthError, NotFoundError, ValidationError
 
 try:
-    from dotenv import load_dotenv; load_dotenv()
+    from dotenv import load_dotenv
+    load_dotenv()
 except Exception:
     pass
+
 
 class Config:
     BASEDIR = os.path.abspath(os.path.dirname(__file__))
@@ -47,6 +59,7 @@ def create_app(config: Optional[type[Config]] = None) -> Flask:
     os.makedirs(cfg_class.DATA_DIR, exist_ok=True)
     app.config.from_object(cfg_class)
 
+    # --- DB & Login -----------------------------------------------------------
     db.init_app(app)
     login_manager = LoginManager()
     login_manager.login_view = "auth"
@@ -66,6 +79,18 @@ def create_app(config: Optional[type[Config]] = None) -> Flask:
 
     app.data_manager = DataManager(db.session)  # type: ignore[attr-defined]
 
+    # --- Health & Static helpers ---------------------------------------------
+    @app.route("/health", methods=["GET"])
+    def health():
+        return jsonify(status="ok"), 200
+
+    @app.route("/favicon.ico")
+    def favicon():
+        """Serve favicon explicitly to avoid 404->500 fallthroughs."""
+        static_dir = os.path.join(app.root_path, "static")
+        return send_from_directory(static_dir, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+    # --- Routes ---------------------------------------------------------------
     @app.route("/", methods=["GET"])
     def root():
         return redirect(url_for("my_movies") if current_user.is_authenticated else url_for("auth"))
@@ -88,6 +113,7 @@ def create_app(config: Optional[type[Config]] = None) -> Flask:
             return redirect(url_for("my_movies"))
         except AppError as err:
             flash(str(err), "error")
+            # 303 so der Browser nicht POST erneut sendet
             return redirect(url_for("auth")), err.status_code
 
     @app.route("/login", methods=["POST"])
@@ -188,14 +214,33 @@ def create_app(config: Optional[type[Config]] = None) -> Flask:
             flash(str(err), "error")
             return redirect(url_for("my_movies")), err.status_code
 
+    # --- Error Handling -------------------------------------------------------
     @app.errorhandler(404)
     def not_found(err: HTTPException):  # type: ignore[override]
-        return render_template("404.html", message=getattr(err, "description", None)), 404
+        # Stelle sicher, dass immer eine Response zurückkommt (kein Re-Raise).
+        message = getattr(err, "description", None)
+        try:
+            return render_template("404.html", message=message), 404
+        except Exception:
+            # Fallback, wenn das Template fehlen sollte.
+            return jsonify(error="Not Found", message=message), 404
 
     @app.errorhandler(500)
     def internal_error(err: Exception):  # type: ignore[override]
         app.logger.exception("Server Error: %s", err)
-        return render_template("500.html"), 500
+        try:
+            return render_template("500.html"), 500
+        except Exception:
+            return jsonify(error="Internal Server Error"), 500
+
+    # Catch-all für wirklich alles, was nicht einzeln gefangen wurde
+    @app.errorhandler(Exception)
+    def unhandled_exception(err: Exception):
+        # NotFound nicht doppelt als 500 behandeln
+        if isinstance(err, NotFound):
+            return not_found(err)  # type: ignore[arg-type]
+        app.logger.exception("Unhandled exception: %s", err)
+        return internal_error(err)
 
     return app
 
